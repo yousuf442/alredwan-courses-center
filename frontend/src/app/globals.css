@@ -146,3 +146,18 @@ button[data-range-middle="true"][data-range-start="false"][data-range-end="false
 button[data-range-middle="true"][data-range-start="false"][data-range-end="false"] {
     border-radius: 9999px 0 0 9999px;
 }
+.shadow-soft:nth-child(4n + 1) {
+    border-end-end-radius: clamp(6rem, 16vw, 19rem);
+}
+
+.shadow-soft:nth-child(4n + 2) {
+    border-end-start-radius: clamp(6rem, 16vw, 19rem);
+}
+
+.shadow-soft:nth-child(4n + 3) {
+    border-start-end-radius: clamp(6rem, 16vw, 19rem);
+}
+
+.shadow-soft:nth-child(4n + 4) {
+    border-start-start-radius: clamp(6rem, 16vw, 19rem);
+}
