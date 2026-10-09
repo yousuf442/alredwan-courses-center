@@ -1,3 +1,4 @@
+import LectureOutline from "@/app/(public)/courses/[id]/LectureOutline";
 import { parseISO } from "date-fns";
 import {
   ArrowRight,
@@ -48,65 +49,6 @@ function getAgeInfo({
   if (max_age !== null)
     return `مناسبة للأعمار حتى ${toHindiDigits(max_age)} سنة`;
   return null;
-}
-
-function LectureOutline({ lectures }: { lectures: LectureOutlineItem[] }) {
-  return (
-    <ol className="divide-y divide-gray-100 overflow-hidden rounded-3xl border border-gray-100">
-      {lectures.map((lecture) => {
-        const badge = LECTURE_STATUS_BADGES[lecture.status];
-        const isMuted =
-          lecture.status === "completed" || lecture.status === "cancelled";
-
-        return (
-          <li
-            key={lecture.id}
-            className={cn(
-              "flex items-center gap-4 bg-white px-5 py-4",
-              isMuted && "bg-gray-50",
-            )}
-          >
-            <span className="bg-olive-500/10 text-olive-700 grid h-11 w-11 shrink-0 place-items-center rounded-xl text-lg font-black">
-              {toHindiDigits(lecture.lecture_number)}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p
-                className={cn(
-                  "truncate text-xl font-bold text-gray-900",
-                  lecture.status === "cancelled" && "line-through",
-                )}
-              >
-                {lecture.title ||
-                  `المحاضرة رقم ${toHindiDigits(lecture.lecture_number)}`}
-              </p>
-              <p className="text-base text-gray-500">
-                {formatDate(parseISO(lecture.day))}
-                {lecture.start_time && (
-                  <>
-                    {" · "}
-                    <span dir="rtl">
-                      {formatTime(lecture.start_time)} –{" "}
-                      {formatTime(lecture.end_time)}
-                    </span>
-                  </>
-                )}
-              </p>
-            </div>
-            {badge && (
-              <span
-                className={cn(
-                  "shrink-0 rounded-full px-3 py-1 text-sm font-bold",
-                  badge,
-                )}
-              >
-                {lecture.status_display}
-              </span>
-            )}
-          </li>
-        );
-      })}
-    </ol>
-  );
 }
 
 export default async function Page({
