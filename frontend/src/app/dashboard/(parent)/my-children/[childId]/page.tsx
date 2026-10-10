@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { protect } from "@/actions/auth";
+import { getUser, protect } from "@/actions/auth";
 import {
   getChildById,
   getChildCourses,
@@ -17,7 +17,10 @@ export default async function Page({
   await protect(["parent"]);
   const { childId } = await params;
 
-  const child = await getChildById(childId);
+  const [parentUser, child] = await Promise.all([
+    getUser(),
+    getChildById(childId),
+  ]);
   if (!child) {
     return notFound();
   }
@@ -52,15 +55,16 @@ export default async function Page({
         ) / enrollments.length,
       )
     : 0;
-
   return (
     <StudentOverviewPage
       name={child.first_name}
+      parentName={parentUser.first_name}
       activeCourses={activeCourses}
       enrollmentRequests={sortedRequests}
       activeCoursesCount={activeCoursesCount}
       pendingRequestsCount={pendingRequestsCount}
       attendanceRate={attendanceRate}
+      role={"parent"}
     />
   );
 }

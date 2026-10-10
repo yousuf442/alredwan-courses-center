@@ -345,14 +345,16 @@ function FilterBar({
   const dateParam =
     searchParams.get("date") || format(new Date(), "yyyy-MM-dd");
   const [localDate, setLocalDate] = useState(dateParam);
+  const [prevDateParam, setPrevDateParam] = useState(dateParam);
+
+  if (prevDateParam !== dateParam) {
+    setPrevDateParam(dateParam);
+    setLocalDate(dateParam);
+  }
 
   const status = searchParams.get("status") || "";
   const attendanceType = searchParams.get("attendance_type") || "";
   const season = searchParams.get("season") || "";
-
-  useEffect(() => {
-    setLocalDate(dateParam);
-  }, [dateParam]);
 
   return (
     <div className="mb-14 flex flex-wrap items-center gap-6 max-[1000px]:flex-col max-[1000px]:items-stretch">
@@ -363,7 +365,10 @@ function FilterBar({
           placeholder="ابحث هنا..."
           defaultValue={searchParams.get("search") || ""}
           onChange={(e) =>
-            mutateSearchParams([{ key: "search", val: e.target.value }])
+            mutateSearchParams([
+              { key: "search", val: e.target.value },
+              { key: "page", val: 1 },
+            ])
           }
           className="flex-1 bg-transparent text-[1.8rem] placeholder:font-semibold placeholder:text-gray-500 focus:outline-none"
         />
@@ -597,12 +602,15 @@ export default function AdminAttendancesView({
 }) {
   const [attendances, setAttendances] =
     useState<StaffAttendanceListItem[]>(initialAttendances);
+  const [prevInitial, setPrevInitial] =
+    useState<StaffAttendanceListItem[]>(initialAttendances);
 
-  useEffect(() => {
+  if (prevInitial !== initialAttendances) {
+    setPrevInitial(initialAttendances);
     setAttendances(initialAttendances);
-  }, [initialAttendances]);
+  }
+
   const searchParamsHook = useSearchParams();
-  const searchQuery = searchParamsHook.get("search")?.toLowerCase() || "";
   const [ratingModal, setRatingModal] = useState<{
     isOpen: boolean;
     attendance?: StaffAttendanceListItem;
@@ -614,7 +622,6 @@ export default function AdminAttendancesView({
     useAuthedWebSocket<StaffAttendanceServerEvent>(WS_URL);
 
   useEffect(() => {
-    console.log(lastJsonMessage);
     if (!lastJsonMessage) return;
     switch (lastJsonMessage.type) {
       case "attendance_update": {
@@ -709,8 +716,8 @@ export default function AdminAttendancesView({
         sortConfig={{}}
       >
         <div className="flex w-full flex-1 flex-col">
-          <div className="w-full overflow-x-auto pb-4">
-            <div className="flex min-w-[1200px] flex-col">
+          <div className="tablet-sm:overflow-x-visible w-full overflow-x-auto pb-4">
+            <div className="tablet-sm:min-w-0 flex min-w-[1200px] flex-col">
               <DataViewHeaderLegacy>
                 <DataViewCellLegacy>م</DataViewCellLegacy>
                 <DataViewCellLegacy>الاسم</DataViewCellLegacy>

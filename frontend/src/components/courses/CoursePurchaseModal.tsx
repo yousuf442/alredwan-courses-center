@@ -15,16 +15,14 @@ import {
   ModalTrigger,
 } from "@/components/ui/Modal";
 import type { EnrollmentRequestCreateBody } from "@/types/entities";
+import { useSearchParams } from "next/navigation";
 
 type PaymentMethod = NonNullable<EnrollmentRequestCreateBody["payment_method"]>;
 
 const paymentOptions: { value: PaymentMethod; label: string }[] = [
   { value: "cash", label: "نقدًا" },
-  { value: "card", label: "بطاقة" },
-  { value: "bank_transfer", label: "تحويل بنكي" },
   { value: "instapay", label: "إنستاباي" },
   { value: "vodafone_cash", label: "فودافون كاش" },
-  { value: "other", label: "طريقة أخرى" },
 ];
 
 interface PurchaseFormInputs {
@@ -44,14 +42,17 @@ export default function CoursePurchaseModal({
   role,
   courseId,
   coursePrice,
+  courseType = "physical",
   childrenOptions = [],
 }: {
   role: "parent" | "student";
   courseId: string;
   coursePrice: string;
+  courseType?: "physical" | "online";
   childrenOptions?: ParentChildDetail[];
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const [isOpen, setIsOpen] = useState(!!searchParams.get("openModal"));
   const {
     register,
     handleSubmit,
@@ -83,7 +84,8 @@ export default function CoursePurchaseModal({
     }
 
     const payload: EnrollmentRequestCreateBody = {
-      course: courseId,
+      course: courseType === "physical" ? courseId : undefined,
+      online_course: courseType === "online" ? courseId : undefined,
       payment_method: values.payment_method,
       notes: values.notes.trim() || undefined,
       price: parsedPrice,
@@ -152,7 +154,7 @@ export default function CoursePurchaseModal({
         </Button>
       </ModalTrigger>
 
-      <ModalContent className="max-h-[90dvh] w-280 overflow-y-auto rounded-[2rem_0]">
+      <ModalContent className="max-h-[90dvh] w-[90vw] max-w-280 overflow-y-auto rounded-[2rem_0]">
         <ModalTitle className="mb-2">تأكيد طلب الإلتحاق</ModalTitle>
 
         <form
@@ -203,8 +205,8 @@ export default function CoursePurchaseModal({
 
           {hasNoChildren && (
             <p className="rounded-[1.2rem_0] bg-gray-200 px-5 py-4 text-2xl text-gray-600">
-              لا يوجد أطفال متاحون للإلتحاق بهذه الدورة حاليًا (إما لا يوجد أطفال
-              مرتبطون أو أنهم ملتحقون بالفعل).
+              لا يوجد أطفال متاحون للإلتحاق بهذه الدورة حاليًا (إما لا يوجد
+              أطفال مرتبطون أو أنهم ملتحقون بالفعل).
             </p>
           )}
 

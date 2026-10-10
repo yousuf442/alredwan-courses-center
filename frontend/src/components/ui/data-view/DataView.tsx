@@ -24,11 +24,16 @@ interface DataViewContext<T> {
   page: number;
   numPages: number;
   maxItemsPerPage: number;
+  totalCount?: number;
   nextPage: () => void;
   prevPage: () => void;
   setPage: (pageNum: number) => void;
   filterConfig: DataViewFilterConfig;
   sortConfig: DataViewSortConfig<T>;
+  manualPagination?: boolean;
+  /** Column captions captured from `DataViewHeaderLegacy`, used by stacked cells on phones. */
+  headerLabels: string[];
+  setHeaderLabels: Dispatch<SetStateAction<string[]>>;
 }
 
 const initialContext: DataViewContext<any> = {
@@ -44,6 +49,8 @@ const initialContext: DataViewContext<any> = {
   setPage: () => {},
   filterConfig: {},
   sortConfig: {},
+  headerLabels: [],
+  setHeaderLabels: () => {},
 };
 
 export const DataViewContext =
@@ -58,6 +65,10 @@ export default function DataViewLegacy<T extends Record<string, any>>({
   sortConfig,
   filterConfig,
   viewLayout = "table",
+  manualPagination,
+  totalPages,
+  totalCount,
+  currentPage,
   children,
 }: {
   gridLayout: string;
@@ -66,22 +77,42 @@ export default function DataViewLegacy<T extends Record<string, any>>({
   sortConfig: DataViewSortConfig<T>;
   filterConfig: DataViewFilterConfig;
   viewLayout?: "table" | "cards";
+  manualPagination?: boolean;
+  totalPages?: number;
+  totalCount?: number;
+  currentPage?: number;
   children: ReactNode;
 }) {
   const [layout, setLayout] =
     useState<DataViewContext<T>["layout"]>(viewLayout);
   const maxItemsState = layout === "cards" ? 8 : maxItemsPerPage;
+  const [headerLabels, setHeaderLabels] = useState<string[]>([]);
 
   const { mutateSearchParams, searchParams } = useMutateSearchParams();
 
+  const isRemote =
+    manualPagination ?? (totalPages !== undefined || totalCount !== undefined);
+
   const searchableKeys = data.length ? Object.keys(data[0]) : [""];
 
-  const filteredData = useFilterData<T>(data, filterConfig);
-  const searchedData = useSearchData<T>(filteredData, searchableKeys);
-  const sortedData = useSortData<T>(searchedData, sortConfig);
+  const filteredData = useFilterData<T>(data, isRemote ? {} : filterConfig);
+  const searchedData = useSearchData<T>(
+    isRemote ? data : filteredData,
+    isRemote ? [] : searchableKeys,
+  );
+  const sortedData = useSortData<T>(
+    isRemote ? data : searchedData,
+    isRemote ? {} : sortConfig,
+  );
 
-  const page = +(searchParams.get("page") || "1");
-  const numPages = Math.ceil(searchedData.length / maxItemsState);
+  const page = currentPage ?? +(searchParams.get("page") || "1");
+  const numPages = isRemote
+    ? (totalPages ??
+      (totalCount !== undefined
+        ? Math.ceil(totalCount / maxItemsState)
+        : Math.ceil(data.length / maxItemsState) || 1))
+    : Math.ceil(searchedData.length / maxItemsState) || 1;
+
   const startIndex = (page - 1) * maxItemsState;
   const endIndex = startIndex + maxItemsState;
 
@@ -101,19 +132,25 @@ export default function DataViewLegacy<T extends Record<string, any>>({
     mutateSearchParams([{ key: "page", val: pageNum }]);
   };
 
+  const displayData = isRemote ? data : sortedData.slice(startIndex, endIndex);
+
   const value: DataViewContext<T> = {
     columnSizing: gridLayout,
     layout,
     setLayout,
-    data: sortedData.slice(startIndex, endIndex),
+    data: displayData,
     page,
     numPages,
     maxItemsPerPage: maxItemsState,
+    totalCount,
     nextPage,
     prevPage,
     setPage,
     filterConfig,
     sortConfig,
+    manualPagination: isRemote,
+    headerLabels,
+    setHeaderLabels,
   };
 
   return <DataViewContext value={value}>{children}</DataViewContext>;

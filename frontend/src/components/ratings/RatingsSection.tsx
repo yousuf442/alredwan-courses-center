@@ -1,22 +1,19 @@
 "use client";
 
-import { Loader2, MessageSquare, Star } from "lucide-react";
-import type React from "react";
-import { useEffect, useState } from "react";
-import { getCourseRatings, getInstructorRatings } from "@/actions/ratings";
-import RatingForm from "./RatingForm";
+import React, { useEffect, useState } from "react";
 import RatingsBreakdown from "./RatingsBreakdown";
 import ReviewCard from "./ReviewCard";
+import RatingForm from "./RatingForm";
+import {
+  getCourseRatings,
+  getInstructorRatings,
+  getOnlineCourseRatings,
+} from "@/actions/ratings";
+import { Loader2, MessageSquare, Star } from "lucide-react";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 
-interface RatingsSectionProps {
-  type: "course" | "instructor";
-  id: string | number;
-  showForm?: boolean;
-  courseId?: number; // Needed for instructor rating
-}
-
-interface RatingItem {
+export interface RatingItem {
   id: number;
   rater_name: string;
   rating: number;
@@ -25,7 +22,7 @@ interface RatingItem {
   course_name?: string;
 }
 
-interface RatingsStatistics {
+export interface RatingsStatistics {
   average_rating: number | null;
   total_ratings: number;
   student_ratings_count: number;
@@ -34,16 +31,34 @@ interface RatingsStatistics {
   parent_average: number | null;
 }
 
-interface RatingsData {
+export interface RatingsData {
   ratings: {
-    student_ratings: RatingItem[];
-    parent_ratings: RatingItem[];
+    student_ratings: {
+      count: number;
+      next: string | null;
+      previous: string | null;
+      results: RatingItem[];
+    };
+    parent_ratings: {
+      count: number;
+      next: string | null;
+      previous: string | null;
+      results: RatingItem[];
+    };
   };
   statistics: RatingsStatistics;
 }
 
-interface DisplayReview extends RatingItem {
+export interface DisplayReview extends RatingItem {
   type: "student" | "parent";
+}
+
+interface RatingsSectionProps {
+  type: "course" | "instructor" | "online_course";
+  id: string | number;
+  showForm?: boolean;
+  courseId?: number; // Needed for instructor rating
+  compact?: boolean;
 }
 
 const RatingsSection: React.FC<RatingsSectionProps> = ({
@@ -51,6 +66,7 @@ const RatingsSection: React.FC<RatingsSectionProps> = ({
   id,
   showForm = false,
   courseId,
+  compact = false,
 }) => {
   const [data, setData] = useState<RatingsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,10 +75,14 @@ const RatingsSection: React.FC<RatingsSectionProps> = ({
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const result =
-        type === "course"
-          ? await getCourseRatings(id)
-          : await getInstructorRatings(id as number);
+      let result;
+      if (type === "course") {
+        result = await getCourseRatings(id);
+      } else if (type === "instructor") {
+        result = await getInstructorRatings(id as number);
+      } else {
+        result = await getOnlineCourseRatings(id as string);
+      }
 
       if (result.success && result.data) {
         setData(result.data as RatingsData);
@@ -75,7 +95,12 @@ const RatingsSection: React.FC<RatingsSectionProps> = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div
+        className={cn(
+          "flex items-center justify-center",
+          compact ? "py-10" : "py-20",
+        )}
+      >
         <Loader2 className="text-primary h-10 w-10 animate-spin" />
       </div>
     );
@@ -84,11 +109,11 @@ const RatingsSection: React.FC<RatingsSectionProps> = ({
   if (!data) return null;
 
   const allReviews: DisplayReview[] = [
-    ...data.ratings.student_ratings.map((r: RatingItem) => ({
+    ...data.ratings.student_ratings.results.map((r: RatingItem) => ({
       ...r,
       type: "student" as const,
     })),
-    ...data.ratings.parent_ratings.map((r: RatingItem) => ({
+    ...data.ratings.parent_ratings.results.map((r: RatingItem) => ({
       ...r,
       type: "parent" as const,
     })),
@@ -159,7 +184,7 @@ const RatingsSection: React.FC<RatingsSectionProps> = ({
               </div>
               <Link
                 href="/?login=true"
-                className="bg-olive-500 hover:bg-olive-400 shadow-olive-500/20 inline-block w-full rounded-2xl py-4 text-center text-2xl font-bold text-white shadow-lg transition-colors"
+                className="bg-olive-500 shadow-olive-500/20 hover:bg-olive-400 inline-block w-full rounded-2xl py-4 text-center text-2xl font-bold text-white shadow-lg transition-colors"
               >
                 تسجيل الدخول
               </Link>

@@ -3,13 +3,20 @@
 import { isAxiosError } from "axios";
 import { revalidatePath } from "next/cache";
 import { getCourseById } from "@/actions/courses";
+import { getOnlineCourseById } from "@/actions/online-courses";
 import { getEnrollmentProgressById } from "@/actions/enrollments";
-import { apiRequest, getAuthApiClient, unwrapPaginated } from "@/lib/api";
+import {
+  apiRequest,
+  getAuthApiClient,
+  unwrapPaginated,
+  publicApiClient,
+} from "@/lib/api";
 import type { PaginatedResponse } from "@/types/config";
+import { getOnlineCourseProgress } from "@/lib/online-courses";
 import type {
-  CourseDetail,
   EnrollmentListItem,
   EnrollmentRequestListItem,
+  StudentCourseItem,
 } from "@/types/entities";
 import type { InstructorDetail } from "@/types/entities/instructors";
 
@@ -210,40 +217,54 @@ export async function getChildEnrollmentRequests(
   }
 }
 
-export async function getChildCourses(childId: string): Promise<(CourseDetail & { course_progress: number })[]> {
-  try {
-    const myEnrollments = await getChildEnrollments(childId);
+export async function getChildCourses(
+  childId: string,
+): Promise<StudentCourseItem[]> {
+  return apiRequest(
+    "Failed to load child courses:",
+    async () => {
+      const myEnrollments = await getChildEnrollments(childId);
 
-    const myCoursesInitial = await Promise.all(
-      myEnrollments.map((e) => getCourseById(e.course)),
-    );
-    const myEnrollmentsProgresses = await Promise.all(
-      myEnrollments.map((e) => getEnrollmentProgressById(e.id)),
-    );
+      const myCourses = await Promise.all(
+        myEnrollments.map(async (e): Promise<StudentCourseItem | null> => {
+          if (e.course) {
+            const [course, progress] = await Promise.all([
+              getCourseById(e.course),
+              getEnrollmentProgressById(e.id),
+            ]);
+            if (!course) return null;
 
-    const myCourses = myCoursesInitial
-      .map((c, i) => {
-        if (!c) return null;
-        return {
-          ...c,
-          course_progress: myEnrollmentsProgresses[i]?.percentage ?? 0,
-        };
-      })
-      .filter((c): c is CourseDetail & { course_progress: number } => c !== null);
+            return {
+              ...course,
+              type: "physical" as const,
+              course_progress: progress?.percentage ?? 0,
+            };
+          }
 
-    return myCourses;
-  } catch (error: unknown) {
-    if (
-      error &&
-      typeof error === "object" &&
-      "digest" in error &&
-      error.digest === "DYNAMIC_SERVER_USAGE"
-    ) {
-      throw error;
-    }
-    console.error("Failed to load child courses:", error);
-    return [];
-  }
+          if (e.online_course) {
+            // Online progress comes from the child's video watch records,
+            // which the course detail already carries when `child` is given.
+            const course = await getOnlineCourseById(
+              String(e.online_course),
+              childId,
+            );
+            if (!course) return null;
+
+            return {
+              ...course,
+              type: "online" as const,
+              course_progress: getOnlineCourseProgress(course.video_lectures),
+            };
+          }
+
+          return null;
+        }),
+      );
+
+      return myCourses.filter((c): c is StudentCourseItem => c !== null);
+    },
+    [],
+  );
 }
 
 // export async function getInstructorId(phoneNum: string) {
@@ -271,10 +292,15 @@ export async function getChildCourses(childId: string): Promise<(CourseDetail & 
 //     return null;
 //   }
 // }
-export async function getInstructorById(id: string | number): Promise<InstructorDetail | null> {
+export async function getInstructorById(
+  id: string | number,
+  publicApi: boolean = false,
+): Promise<InstructorDetail | null> {
   try {
-    const apiClient = await getAuthApiClient();
-    const { data } = await apiClient.get<InstructorDetail>(`/api/users/instructors/${id}/`);
+    const apiClient = publicApi ? publicApiClient : await getAuthApiClient();
+    const { data } = await apiClient.get<InstructorDetail>(
+      `/api/users/instructors/${id}/`,
+    );
     return data;
   } catch (error: unknown) {
     if (
