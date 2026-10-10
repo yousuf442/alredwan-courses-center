@@ -228,7 +228,7 @@ export default function ImageLightbox(props: ImageLightboxProps) {
                     "absolute end-3 top-1/2 z-20 -translate-y-1/2 sm:end-6",
                   )}
                 >
-                  <ChevronRight className="h-8 w-8" />
+                  <ChevronLeft className="h-8 w-8" />
                 </button>
                 <button
                   type="button"
@@ -239,7 +239,7 @@ export default function ImageLightbox(props: ImageLightboxProps) {
                     "absolute start-3 top-1/2 z-20 -translate-y-1/2 sm:start-6",
                   )}
                 >
-                  <ChevronLeft className="h-8 w-8" />
+                  <ChevronRight className="h-8 w-8" />
                 </button>
               </>
             )}
